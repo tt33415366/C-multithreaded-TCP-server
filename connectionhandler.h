@@ -14,7 +14,7 @@ private:
 	void stop();
 
 public:
-	explicit ConnectionHandler(int fd);
+	/* explicit */ ConnectionHandler(int fd);
 	~ConnectionHandler();
 
 	void terminate();

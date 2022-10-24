@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <iostream>
 #include <cerrno>
-#include <memory>
 #include "connectionhandler.h"
 
 TCPServer::TCPServer():efd(-1) {
@@ -91,7 +90,7 @@ void TCPServer::threadFunc() {
 	// monitored file descriptors - at start there is efd and just created sockfd, 
 	// POLLIN means we wait for read
 	std::vector<struct pollfd> fds { {this->efd, POLLIN, 0}, {sockfd, POLLIN, 0}};
-	std::unordered_map<int, std::unique_ptr<ConnectionHandler>> handlers;
+	std::unordered_map<int, ConnectionHandler> handlers;
 
 	while (true) {
 		const int TIMEOUT = 1000; // 1000ms
@@ -118,7 +117,7 @@ void TCPServer::threadFunc() {
 					fds.push_back(pollfd {clientfd, POLLIN, 0});
 					// creates ConnectionHandler object that will run in separate 
 					// thread
-					handlers.emplace(clientfd, std::unique_ptr<ConnectionHandler>(new ConnectionHandler(clientfd)));
+					handlers.emplace(clientfd, clientfd);
 				} else {
 					std::cout << "accept => -1, errno = " << errno << std::endl;
 				}
@@ -135,7 +134,7 @@ void TCPServer::threadFunc() {
 					// Checks if disconnected or
 					std::cout << "Client disconnected" << std::endl;
 					close(it->fd); // closing socket
-					handlers.at(it->fd)->terminate(); // terminating ConnectionHandler
+					handlers.at(it->fd).terminate(); // terminating ConnectionHandler
 													 // thread
 					handlers.erase(it->fd);
 					it = fds.erase(it);
@@ -150,7 +149,7 @@ void TCPServer::threadFunc() {
 	for (auto it = fds.begin() + 1; it != fds.end(); it++) {
 		close(it->fd);
 		if (handlers.find(it->fd) != handlers.end()) {
-			handlers.at(it->fd)->terminate();
+			handlers.at(it->fd).terminate();
 		}
 	}
 
